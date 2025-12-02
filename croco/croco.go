@@ -59,7 +59,6 @@ func Recv(code string) (string, error) {
                NoPrompt:       true,
                DisableLocal:   false,
                Curve: "p256",
-	       Stdout: true,
        }
 
        recipient, err := croc.New(opts)
