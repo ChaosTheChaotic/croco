@@ -59,6 +59,7 @@ func Recv(code string) (string, error) {
 		NoPrompt:       true,
 		DisableLocal:   false,
 		Curve: "p256",
+		Stdout: true,
 	}
 
 	recipient, err := croc.New(opts)
@@ -71,17 +72,41 @@ func Recv(code string) (string, error) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// Run the receive operation
-	err = recipient.Receive()
+	// Create a channel to capture the result
+	resultChan := make(chan string)
+	errChan := make(chan error)
 
-	// Close the pipe and restore stdout
-	w.Close()
-	os.Stdout = oldStdout
+	// Run the receive operation in a goroutine
+	go func() {
+		var buf bytes.Buffer
+		// Tee the output to both buffer and restore it later
+		multiWriter := io.MultiWriter(&buf, oldStdout)
+		
+		// Copy from the pipe to our multi-writer
+		go func() {
+			io.Copy(multiWriter, r)
+		}()
 
-	// Read the captured output
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+		// Run the receive
+		err := recipient.Receive()
+		
+		// Close the pipe and restore stdout
+		w.Close()
+		os.Stdout = oldStdout
 
-	// Return the captured text and any error
-	return buf.String(), err
+		if err != nil {
+			errChan <- err
+			return
+		}
+		
+		resultChan <- buf.String()
+	}()
+
+	// Wait for either result or error
+	select {
+	case result := <-resultChan:
+		return result, nil
+	case err := <-errChan:
+		return "", err
+	}
 }
