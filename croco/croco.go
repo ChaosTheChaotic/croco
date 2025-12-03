@@ -72,7 +72,7 @@ func Recv(code string) (string, error) {
        os.Stdout = w
 
        oldStderr := os.Stderr
-       r, we, _ := os.Pipe()
+       _, we, _ := os.Pipe()
        os.Stderr = we
 
        // Run the receive operation
