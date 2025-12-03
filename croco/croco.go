@@ -71,12 +71,19 @@ func Recv(code string) (string, error) {
        r, w, _ := os.Pipe()
        os.Stdout = w
 
+       oldStderr := os.Stderr
+       r, we, _ := os.Pipe()
+       os.Stderr = we
+
        // Run the receive operation
        err = recipient.Receive()
 
        // Close the pipe and restore stdout
        w.Close()
        os.Stdout = oldStdout
+       
+       we.Close()
+       os.Stderr = oldStderr
 
        // Read the captured output
        var buf bytes.Buffer
